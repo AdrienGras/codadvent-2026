@@ -1,0 +1,17 @@
+# Dépendances et builds des projets du jour (les projets officiels n'ont pas toujours leur propre .gitignore)
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+target/
+bin/
+obj/
+vendor/
+build/
+dist/
+*.class
+
+# Éditeurs / OS
+.idea/
+.vscode/
+.DS_Store
