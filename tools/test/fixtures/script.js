@@ -1,0 +1,1 @@
+"use strict";const CHALLENGES_DATA=[{day:0,title:"Chapitre 0 — Test",htmlContent:"<p>a }]; [b ' \" `</p>\n<pre><code class=\"language-typescript\">x &lt; y</code></pre>",hasSrcFolder:!0},{day:1,title:'Chapitre 1 — Deux',htmlContent:'<p>it\'s [ok]</p>',hasSrcFolder:!1}];window.matchMedia("(x)");document.addEventListener("DOMContentLoaded",function(){});
