@@ -11,7 +11,33 @@ build/
 dist/
 *.class
 
+# Python
+*.py[cod]
+*.egg-info/
+venv/
+
+# Scala / sbt
+.bsp/
+.metals/
+.bloop/
+project/project/
+
+# C# / .NET
+TestResults/
+*.user
+
+# PHP
+.phpunit.result.cache
+.phpunit.cache/
+
+# C / CMake
+cmake-build-*/
+
+# Couverture
+coverage/
+
 # Éditeurs / OS
 .idea/
 .vscode/
+*.iml
 .DS_Store

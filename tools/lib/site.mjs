@@ -12,7 +12,11 @@ export function findScriptUrl(html, baseUrl) {
 export function extractChallenges(js) {
   const marker = js.indexOf("CHALLENGES_DATA=");
   if (marker === -1) throw new Error("CHALLENGES_DATA introuvable dans le script");
-  return new LiteralParser(js, js.indexOf("[", marker)).value();
+  const start = marker + "CHALLENGES_DATA=".length;
+  if (!/^\s*\[/.test(js.slice(start))) {
+    throw new Error("format de CHALLENGES_DATA non reconnu (le site a changé ?)");
+  }
+  return new LiteralParser(js, start).value();
 }
 
 const ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };

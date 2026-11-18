@@ -44,6 +44,11 @@ test("extractChallenges gère échappements, nombres et booléens", () => {
   assert.deepEqual(extractChallenges(js), [{ day: 12, title: 'a"bé\n', ok: true, ko: false, n: null, s: "x" }]);
 });
 
+test("extractChallenges signale un format inconnu au lieu de lire un autre tableau", () => {
+  assert.throws(() => extractChallenges("const CHALLENGES_DATA=window.D;var x=[1,2];"), /format de CHALLENGES_DATA non reconnu/);
+  assert.throws(() => extractChallenges("const CHALLENGES_DATA=window.D;"), /format de CHALLENGES_DATA non reconnu/);
+});
+
 test("findChallenge lève pour un jour non publié", () => {
   assert.throws(() => findChallenge(extractChallenges(fixture), 3), /jour 3 non publié/);
 });
