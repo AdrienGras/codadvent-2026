@@ -1,5 +1,3 @@
-import vm from "node:vm";
-
 /** URL absolue du script qui embarque les consignes (son nom change à chaque publication). */
 export function findScriptUrl(html, baseUrl) {
   const match = html.match(/src="([^"]*script-[^"]*\.js)"/);
@@ -8,33 +6,120 @@ export function findScriptUrl(html, baseUrl) {
 }
 
 /**
- * Isole le littéral `CHALLENGES_DATA=[...]` en respectant les chaînes JS,
- * puis l'évalue seul dans un contexte vide : le reste du script n'est jamais exécuté.
+ * Lit le littéral `CHALLENGES_DATA=[...]` du script du site comme une donnée.
+ * Rien n'est exécuté : seuls tableaux, objets, chaînes, nombres, booléens (`!0`/`!1`) et null sont acceptés.
  */
 export function extractChallenges(js) {
   const marker = js.indexOf("CHALLENGES_DATA=");
   if (marker === -1) throw new Error("CHALLENGES_DATA introuvable dans le script");
-  const start = js.indexOf("[", marker);
-  const end = findClosingBracket(js, start);
-  const literal = js.slice(start, end + 1);
-  return vm.runInNewContext(`(${literal})`, Object.create(null), { timeout: 1000 });
+  return new LiteralParser(js, js.indexOf("[", marker)).value();
 }
 
-function findClosingBracket(src, start) {
-  let depth = 0;
-  let quote = null;
-  for (let i = start; i < src.length; i++) {
-    const c = src[i];
-    if (quote) {
-      if (c === "\\") i++;
-      else if (c === quote) quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") quote = c;
-    else if (c === "[") depth++;
-    else if (c === "]" && --depth === 0) return i;
+const ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };
+
+class LiteralParser {
+  constructor(src, pos) {
+    this.src = src;
+    this.pos = pos;
   }
-  throw new Error("fin du tableau CHALLENGES_DATA introuvable");
+
+  fail(what = "caractère") {
+    throw new Error(`${what} inattendu à la position ${this.pos} : « ${this.src.slice(this.pos, this.pos + 20)} »`);
+  }
+
+  skipSpaces() {
+    while (/\s/.test(this.src[this.pos] ?? "")) this.pos++;
+  }
+
+  eat(char) {
+    this.skipSpaces();
+    if (this.src[this.pos] !== char) return false;
+    this.pos++;
+    return true;
+  }
+
+  value() {
+    this.skipSpaces();
+    const c = this.src[this.pos];
+    if (c === "[") return this.array();
+    if (c === "{") return this.object();
+    if (c === '"' || c === "'" || c === "`") return this.string();
+    if (c === "!" && /^![01]/.test(this.src.slice(this.pos, this.pos + 2))) {
+      this.pos += 2;
+      return this.src[this.pos - 1] === "0";
+    }
+    const number = this.src.slice(this.pos).match(/^-?\d+(\.\d+)?/);
+    if (number) {
+      this.pos += number[0].length;
+      return Number(number[0]);
+    }
+    for (const [word, val] of [["true", true], ["false", false], ["null", null]]) {
+      if (this.src.startsWith(word, this.pos)) {
+        this.pos += word.length;
+        return val;
+      }
+    }
+    return this.fail("élément");
+  }
+
+  array() {
+    this.pos++;
+    const items = [];
+    while (!this.eat("]")) {
+      items.push(this.value());
+      if (!this.eat(",") && !this.eat("]")) this.fail();
+      else if (this.src[this.pos - 1] === "]") break;
+    }
+    return items;
+  }
+
+  object() {
+    this.pos++;
+    const obj = {};
+    while (!this.eat("}")) {
+      this.skipSpaces();
+      const key = /["']/.test(this.src[this.pos]) ? this.string() : this.identifier();
+      if (!this.eat(":")) this.fail();
+      obj[key] = this.value();
+      if (!this.eat(",") && !this.eat("}")) this.fail();
+      else if (this.src[this.pos - 1] === "}") break;
+    }
+    return obj;
+  }
+
+  identifier() {
+    const id = this.src.slice(this.pos).match(/^[A-Za-z_$][\w$]*/);
+    if (!id) this.fail("clé");
+    this.pos += id[0].length;
+    return id[0];
+  }
+
+  string() {
+    const quote = this.src[this.pos++];
+    let out = "";
+    while (this.pos < this.src.length) {
+      const c = this.src[this.pos++];
+      if (c === quote) return out;
+      if (quote === "`" && c === "$" && this.src[this.pos] === "{") this.fail("gabarit ${}");
+      if (c !== "\\") {
+        out += c;
+        continue;
+      }
+      const e = this.src[this.pos++];
+      if (e === "u") {
+        out += String.fromCharCode(parseInt(this.src.slice(this.pos, this.pos + 4), 16));
+        this.pos += 4;
+      } else if (e === "x") {
+        out += String.fromCharCode(parseInt(this.src.slice(this.pos, this.pos + 2), 16));
+        this.pos += 2;
+      } else if (e === "\n") {
+        // continuation de ligne
+      } else {
+        out += ESCAPES[e] ?? e;
+      }
+    }
+    return this.fail("fin de chaîne");
+  }
 }
 
 export function findChallenge(list, day) {

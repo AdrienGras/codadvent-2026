@@ -32,6 +32,18 @@ test("extractChallenges lève si CHALLENGES_DATA est absent", () => {
   assert.throws(() => extractChallenges("const X=[];"), /CHALLENGES_DATA/);
 });
 
+test("extractChallenges refuse tout ce qui n'est pas une donnée littérale", () => {
+  globalThis.__pwned = false;
+  const evil = 'const CHALLENGES_DATA=[{day:0,title:this.constructor.constructor("globalThis.__pwned=true")()}];';
+  assert.throws(() => extractChallenges(evil), /inattendu/);
+  assert.equal(globalThis.__pwned, false);
+});
+
+test("extractChallenges gère échappements, nombres et booléens", () => {
+  const js = 'const CHALLENGES_DATA=[{day:12,"title":"a\\"b\\u00e9\\n",ok:true,ko:!1,n:null,s:`x`,}];';
+  assert.deepEqual(extractChallenges(js), [{ day: 12, title: 'a"bé\n', ok: true, ko: false, n: null, s: "x" }]);
+});
+
 test("findChallenge lève pour un jour non publié", () => {
   assert.throws(() => findChallenge(extractChallenges(fixture), 3), /jour 3 non publié/);
 });
