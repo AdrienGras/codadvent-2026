@@ -6,27 +6,17 @@ import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:
 import { spawnSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dayDirName, extractChallenges, findChallenge, findScriptUrl } from "./lib/site.mjs";
+import { dayDirName, extractChallenges, findChallenge, findScriptUrl, parseDay } from "./lib/site.mjs";
 import { extractSnippets, snippetFileName } from "./lib/snippets.mjs";
-import { LANGUAGES, resolveLanguage } from "./lib/languages.mjs";
-import { prepareWorkspace } from "./lib/workspace.mjs";
+import { LANGUAGES } from "./lib/languages.mjs";
+import { prepareWorkspace, replaceDir, resolveWorkspaceLanguage } from "./lib/workspace.mjs";
+import { fetchOk } from "./lib/http.mjs";
+import { assertCommands } from "./lib/system.mjs";
 
 const BASE_URL = "https://codadvent.fr/";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const STARTERS = join(ROOT, "starters");
 const rel = (p) => relative(process.cwd(), p) || ".";
-
-function parseDay(arg) {
-  const day = Number(arg);
-  if (!Number.isInteger(day) || day < 0 || day > 24) throw new Error(`jour invalide « ${arg} » (0 à 24)`);
-  return day;
-}
-
-async function fetchOk(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
-  return res;
-}
 
 function run(cmd, args, options = {}) {
   const res = spawnSync(cmd, args, { encoding: "utf8", ...options });
@@ -36,6 +26,7 @@ function run(cmd, args, options = {}) {
 }
 
 async function pull(day) {
+  assertCommands(["pandoc", "unzip"]);
   const html = await (await fetchOk(BASE_URL)).text();
   const js = await (await fetchOk(findScriptUrl(html, BASE_URL))).text();
   const challenge = findChallenge(extractChallenges(js), day);
@@ -66,9 +57,8 @@ async function pull(day) {
   const zipPath = join(dayDir, "src.zip");
   writeFileSync(zipPath, Buffer.from(await (await fetchOk(zipUrl)).arrayBuffer()));
   const upstreamDir = join(dayDir, "upstream");
-  rmSync(upstreamDir, { recursive: true, force: true });
   try {
-    run("unzip", ["-q", "-o", zipPath, "-d", upstreamDir]);
+    replaceDir(upstreamDir, (tmp) => run("unzip", ["-q", "-o", zipPath, "-d", tmp]));
   } finally {
     rmSync(zipPath, { force: true });
   }
@@ -77,9 +67,9 @@ async function pull(day) {
 }
 
 function start(day, langArg) {
-  const lang = resolveLanguage(langArg);
   const dayDir = join(ROOT, "days", dayDirName(day));
-  if (!existsSync(dayDir)) throw new Error(`${rel(dayDir)} absent : lance d'abord « pull ${day} »`);
+  if (!existsSync(join(dayDir, "CONSIGNE.md"))) throw new Error(`consigne du jour ${day} absente : lance d'abord « pull ${day} »`);
+  const lang = resolveWorkspaceLanguage(dayDir, langArg);
   const { source, from, to } = prepareWorkspace({ dayDir, startersDir: STARTERS, lang });
   console.log(`✓ ${rel(to)} créé depuis ${rel(from)}`);
   if (source === "upstream") {

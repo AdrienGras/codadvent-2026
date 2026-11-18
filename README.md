@@ -40,7 +40,7 @@ node tools/codadvent.mjs start 3 python    # prépare days/day-03/python/
 
 Ensuite : tests au vert, puis un commit par jour (`day-03: <titre> (python)`).
 
-Langages : `c`, `cobol`, `csharp` (`c#`, `cs`), `java`, `php`, `typescript` (`ts`), `python` (`py`), `scala`, `kotlin` (`kt`), `rust` (`rs`).
+Langages : `c`, `cobol`, `csharp` (`c#`, `cs`), `java`, `php`, `typescript` (`ts`), `python` (`py`), `scala`, `kotlin` (`kt`), `rust` (`rs`) — plus tout langage fourni uniquement par les sources officielles du jour (nom du dossier dans `upstream/`, ex. `go`).
 
 ## Maintenance
 

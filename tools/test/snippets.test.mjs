@@ -17,6 +17,20 @@ test("extractSnippets décode les entités HTML courantes", () => {
   assert.equal(extractSnippets(html)[0].code, `"a" 'b' > <T>`);
 });
 
+test("extractSnippets décode les entités numériques et &apos;", () => {
+  const html = '<pre><code class="language-ts">&#123;&#x2F;&#96;&apos;&#X41;</code></pre>';
+  assert.equal(extractSnippets(html)[0].code, "{/`'A");
+});
+
+test("extractSnippets ne double-décode pas &amp;lt;", () => {
+  assert.equal(extractSnippets("<pre><code>&amp;lt;</code></pre>")[0].code, "&lt;");
+});
+
+test("extractSnippets retire les balises insérées dans le code", () => {
+  const html = '<pre><code class="language-ts">let <mark>x</mark> = <span class="k">1</span>;</code></pre>';
+  assert.equal(extractSnippets(html)[0].code, "let x = 1;");
+});
+
 test("extractSnippets ignore le code inline hors <pre>", () => {
   assert.deepEqual(extractSnippets("<p><code>TypeScript</code></p>"), []);
 });

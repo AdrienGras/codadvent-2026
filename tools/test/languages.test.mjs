@@ -34,6 +34,13 @@ test("findUpstreamDir retrouve le dossier officiel via ses alias", () => {
   assert.equal(findUpstreamDir(dir, "rust"), null);
 });
 
+test("findUpstreamDir accepte un langage hors starters (nom de dossier exact)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "upstream-"));
+  mkdirSync(join(dir, "Go"));
+  assert.equal(findUpstreamDir(dir, "go"), join(dir, "Go"));
+  assert.equal(findUpstreamDir(dir, "sql"), null);
+});
+
 test("findUpstreamDir renvoie null sans dossier upstream", () => {
   assert.equal(findUpstreamDir(join(tmpdir(), "absent-xyz-404"), "java"), null);
 });

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { findScriptUrl, extractChallenges, findChallenge, dayDirName } from "../lib/site.mjs";
+import { findScriptUrl, extractChallenges, findChallenge, dayDirName, parseDay } from "../lib/site.mjs";
 
 const fixture = readFileSync(new URL("./fixtures/script.js", import.meta.url), "utf8");
 
@@ -47,6 +47,26 @@ test("extractChallenges gère échappements, nombres et booléens", () => {
 test("extractChallenges signale un format inconnu au lieu de lire un autre tableau", () => {
   assert.throws(() => extractChallenges("const CHALLENGES_DATA=window.D;var x=[1,2];"), /format de CHALLENGES_DATA non reconnu/);
   assert.throws(() => extractChallenges("const CHALLENGES_DATA=window.D;"), /format de CHALLENGES_DATA non reconnu/);
+});
+
+test("extractChallenges décode \\u{…} (points de code hors BMP)", () => {
+  const js = 'const CHALLENGES_DATA=[{t:"a\\u{1F384}b\\u{e9}"}];';
+  assert.deepEqual(extractChallenges(js), [{ t: "a🎄bé" }]);
+});
+
+test("extractChallenges refuse un échappement \\u ou \\x invalide", () => {
+  assert.throws(() => extractChallenges('const CHALLENGES_DATA=[{t:"\\uZZZZ"}];'), /échappement/);
+  assert.throws(() => extractChallenges('const CHALLENGES_DATA=[{t:"\\xG1"}];'), /échappement/);
+  assert.throws(() => extractChallenges('const CHALLENGES_DATA=[{t:"\\u{zz}"}];'), /échappement/);
+});
+
+test("parseDay accepte 0 à 24 en chiffres seulement", () => {
+  assert.equal(parseDay("0"), 0);
+  assert.equal(parseDay("03"), 3);
+  assert.equal(parseDay("24"), 24);
+  for (const bad of ["", " ", "0x3", "1e1", "25", "-1", "3.0", "abc"]) {
+    assert.throws(() => parseDay(bad), /jour invalide/, `« ${bad} » devrait être refusé`);
+  }
 });
 
 test("findChallenge lève pour un jour non publié", () => {

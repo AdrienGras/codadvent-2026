@@ -37,11 +37,12 @@ export function resolveLanguage(input) {
   return lang;
 }
 
-/** Dossier du zip officiel correspondant au langage, ou null. */
+/** Dossier du zip officiel correspondant au langage (connu des starters ou non), ou null. */
 export function findUpstreamDir(upstreamDir, lang) {
   if (!existsSync(upstreamDir)) return null;
+  const names = LANGUAGES[lang]?.aliases ?? [lang.toLowerCase()];
   const entry = readdirSync(upstreamDir, { withFileTypes: true }).find(
-    (e) => e.isDirectory() && LANGUAGES[lang].aliases.includes(e.name.toLowerCase()),
+    (e) => e.isDirectory() && names.includes(e.name.toLowerCase()),
   );
   return entry ? join(upstreamDir, entry.name) : null;
 }

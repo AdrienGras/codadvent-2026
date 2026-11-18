@@ -110,12 +110,14 @@ class LiteralParser {
         continue;
       }
       const e = this.src[this.pos++];
-      if (e === "u") {
-        out += String.fromCharCode(parseInt(this.src.slice(this.pos, this.pos + 4), 16));
-        this.pos += 4;
-      } else if (e === "x") {
-        out += String.fromCharCode(parseInt(this.src.slice(this.pos, this.pos + 2), 16));
-        this.pos += 2;
+      if (e === "u" && this.src[this.pos] === "{") {
+        const end = this.src.indexOf("}", this.pos);
+        out += String.fromCodePoint(this.hex(this.src.slice(this.pos + 1, end), 1, 6));
+        this.pos = end + 1;
+      } else if (e === "u" || e === "x") {
+        const len = e === "u" ? 4 : 2;
+        out += String.fromCharCode(this.hex(this.src.slice(this.pos, this.pos + len), len, len));
+        this.pos += len;
       } else if (e === "\n") {
         // continuation de ligne
       } else {
@@ -124,6 +126,18 @@ class LiteralParser {
     }
     return this.fail("fin de chaîne");
   }
+
+  hex(digits, min, max) {
+    const code = new RegExp(`^[0-9a-fA-F]{${min},${max}}$`).test(digits) ? parseInt(digits, 16) : NaN;
+    if (Number.isNaN(code) || code > 0x10ffff) this.fail("échappement");
+    return code;
+  }
+}
+
+/** Jour passé en argument : 0 à 24, chiffres uniquement. */
+export function parseDay(arg) {
+  if (!/^\d{1,2}$/.test(arg) || Number(arg) > 24) throw new Error(`jour invalide « ${arg} » (0 à 24)`);
+  return Number(arg);
 }
 
 export function findChallenge(list, day) {
